@@ -9,19 +9,33 @@ if(!empty($_POST)){
     $convert = explode("\n", $data);
     $allData = count($convert);
     $strinQuery = "";
+    $personQuery = "";
     for($i=1;$i<($allData-1);$i++){
         $values = explode(";",$convert[$i]);
-        $strinQuery .= "('','$values[1]','$values[4]','','$values[2]','".str_replace("'","",$values[3])."','".str_replace("'","",$values[5])."','$values[8]','$values[9]','$values[10]','$values[11]','$values[12]','$values[6]','$values[13]','$values[15]','".date("Y-m-d H:i:s")."', '', 1, 1),";
+        $strinQuery .= "($i,'$values[1]','$values[4]','','$values[2]','".str_replace("'","",$values[3])."','".str_replace("'","",$values[5])."','".str_replace("'", "", $values[8])."','".str_replace("'","", $values[9])."','".str_replace("'", "", $values[10])."','".str_replace("'", "", $values[11])."','".str_replace("'","",$values[6])."','".str_replace("'","",$values[13])."','".str_replace("'","",$values[15])."','".date("Y-m-d H:i:s")."', '', 1, 1),";
     }
-    $preQuery = substr($strinQuery, 0, -1);
-    $query = "INSERT INTO datahard VALUES " . $strinQuery . ";";
+    $preQuery = rtrim($strinQuery, ",");    
+    $query = "INSERT INTO datahard VALUES " . $preQuery . ";";
     $response = $conn->query($query);
-    
-    echo "<br/>".var_dump($conn);
-    
-    /*
-     * iddatahard,codprodinterno,razonsocial,address,tipodoc,document,codprodcliente,moneda,importsaldo,saldooperativo,saldoactivo,fechmora,fechasign,estadocliente,datecreate,dateupdate,status,idcustomer
-     */
+    $search = "SELECT DISTINCT razonsocial, address, tipodoc,document,fechmora, fechasign,estadocliente
+                FROM datahard 
+                GROUP BY document 
+                ORDER BY razonsocial 
+                LIMIT 0, 2000";
+    $result = $conn->query($search);
+    if ($result) {
+        $i=1;
+        /* obtener el array de objetos */        
+        while ($obj = $result->fetch_object()) {
+            $personQuery .= "($i,'$obj->razonsocial','$obj->address','$obj->tipodoc','$obj->document', '','','','','$obj->fechmora','$obj->fechasign','$obj->estadocliente','','".date("Y-m-d H:i:s")."', '', 1),";
+            $i++;
+        }
+        /* liberar el conjunto de resultados */
+        $result->close();
+    }
+    $prePerson = rtrim($personQuery, ",");
+    $person = "INSERT INTO person VALUES " . $prePerson . ";";
+    $rspPerson = $conn->query($person);
     
 }
 
@@ -33,10 +47,15 @@ if(!empty($_POST)){
  */
 ?>
 <html>
+    <?php echo date('Y-m-d H:i:s'); ?>
     <form method="post" enctype="multipart/form-data" action="upload.php">
         SELECCIONE ARCHIVO:
         <input type="file" name="fileUpload" id="fileUpload"/>
         <input type="submit" value="Upload" name="submit" />
     </form>
+    <?php if(!empty($preQuery)):?>
+    <pre><?php echo var_dump($conn); ?></pre>
+    <?php endif; ?>
+    
 </html>
 
