@@ -5,55 +5,45 @@ include '../db/conextion.php';
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
+
+header('Content-Type: text/plain');
+header('Content-Disposition: attachment; filename="export-gps-data.txt"');
+header("Content-Transfer-Encoding: binary"); 
+$array_data[0] = "DNI;NOMBRE;COMENTARIO GENERAL;TELEFONO";
 $conn = conn();
-$count = 1;
-$compare = "";
-$queryPersonPhone = "SELECT clie.razonsocial, clie.address, ph.document, clie.codprodcliente, clie.saldoactivo, clie.fechmora, clie.estadocliente
-        FROM datahard clie
-        INNER JOIN dataphone ph
-        ON (clie.document = ph.document)
-        GROUP BY clie.saldoactivo
-        ORDER BY clie.razonsocial
-        LIMIT 0,5000";
-$stringRpt = "";
-$responsefinal = "(";
-$resultPers = $conn->query($queryPersonPhone);
-if ($resultPers) {
-    while ($obj = $resultPers->fetch_object()) {
-        if($count == 1){
-            $compare = $obj = "";
-        }else{
-            
-        }
-        $queryDataHart = "SELECT ph.numphone
-            FROM dataphone ph
-            WHERE clie.document IN '".$obj->document."'
-            LIMIT 0,10;";
-        $resultDataHard = $conn->query($queryDataHart);
-        if($resultDataHard){
-            while($obj1 = $resultDataHard->fetch_obj()){
-                $responsefinal .= "";
-                $stringRpt .= "$obj1->codprodcliente - $obj1->saldoactivo - $obj1->fechmora <br/>";
-            }            
-        }
-        $count++;
-        $resultPers->close();        
-    }
-    $newpre = rtrim($personQuery, ",");
-    $newpre .= ")";
-    $resultPers->close();
-}
+$queryExport = "SELECT
+        per.document AS dni,
+        per.razonsocial AS fullname,
+        GROUP_CONCAT(DISTINCT CONCAT(per.codprodcliente, ' ', per.moneda, ' ',
+                      per.saldoactivo, ' ', 
+                      per.fechmora) 
+              ORDER BY per.codprodcliente ASC SEPARATOR ' <br/>') AS commentary,
+        ph.numphone AS phone
+    FROM
+        datahard per,
+        dataphone ph
+    WHERE
+        per.document=ph.document
+    GROUP BY
+        ph.numphone
+    ORDER BY per.razonsocial ASC
+    LIMIT 0,5000;";
 
-
-$resultDataHard = $conn->query($queryDataHart);
-if($resultDataHard){
-    while($obj = $resultDataHard->fetch_object()){
-        
+$result = $conn->query($queryExport);
+$i = 1;
+if($result){
+    while($obj = $result->fetch_object()){
+        $array_data[$i] = "$obj->dni;$obj->fullname;$obj->commentary;$obj->phone";
+        $i++;
     }
 }
-$queryDataHard = "";
-
-
+$fp = fopen('php://output', 'w');
+foreach ($array_data as $line) {
+    // though CSV stands for "comma separated value"
+    // in many countries (including France) separator is ";"
+    fputcsv($fp,explode(';',$line));
+}
+fclose($fp);
 
 
 /*
@@ -64,15 +54,9 @@ ON (clie.document = ph.document)
 ORDER BY clie.glosaname
 LIMIT 0,5000;
  * 
- * CONTRASEÑA
- * ------------
- * VTIBURCIO
-cUUOVQN9plR9E/
- * https://simpletrust.com.ar/defaultAdmin.aspx
  * 
  * 
  * 
  */
 ?>
 
-<pre><?php echo  var_dump($queryDataHart);?></pre>
